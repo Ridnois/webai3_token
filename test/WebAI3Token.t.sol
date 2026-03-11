@@ -1,15 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
-import {IAccessControl} from "@openzeppelin/contracts/access/IAccessControl.sol";
-import {Test} from "forge-std/Test.sol";
-import {WebAI3Token} from "../src/WebAI3Token.sol";
+import { MessageHashUtils } from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
+import { IAccessControl } from "@openzeppelin/contracts/access/IAccessControl.sol";
+import { Test } from "forge-std/Test.sol";
+import { WebAI3Token } from "../src/WebAI3Token.sol";
 
 contract WebAI3TokenTest is Test {
-    bytes32 internal constant PERMIT_TYPEHASH =
-        keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
+    bytes32 internal constant PERMIT_TYPEHASH = keccak256(
+        "Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"
+    );
 
     address internal admin = makeAddr("admin");
     address internal treasury = makeAddr("treasury");
@@ -83,7 +84,11 @@ contract WebAI3TokenTest is Test {
 
         vm.startPrank(attacker);
         vm.expectRevert(
-            abi.encodeWithSelector(IAccessControl.AccessControlUnauthorizedAccount.selector, attacker, token.PAUSER_ROLE())
+            abi.encodeWithSelector(
+                IAccessControl.AccessControlUnauthorizedAccount.selector,
+                attacker,
+                token.PAUSER_ROLE()
+            )
         );
         token.pause();
         vm.stopPrank();
@@ -137,7 +142,8 @@ contract WebAI3TokenTest is Test {
         bytes32 structHash = keccak256(
             abi.encode(PERMIT_TYPEHASH, alice, spender, value, permitToken.nonces(alice), deadline)
         );
-        bytes32 digest = MessageHashUtils.toTypedDataHash(permitToken.DOMAIN_SEPARATOR(), structHash);
+        bytes32 digest =
+            MessageHashUtils.toTypedDataHash(permitToken.DOMAIN_SEPARATOR(), structHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alicePk, digest);
 
         permitToken.permit(alice, spender, value, deadline, v, r, s);
@@ -158,23 +164,36 @@ contract WebAI3TokenTest is Test {
         assertEq(token.balanceOf(treasury), 150_000_000 ether + amount);
     }
 
-    function _defaultAllocations() internal view returns (WebAI3Token.Allocation[] memory allocations) {
+    function _defaultAllocations()
+        internal
+        view
+        returns (WebAI3Token.Allocation[] memory allocations)
+    {
         allocations = new WebAI3Token.Allocation[](6);
-        allocations[0] = WebAI3Token.Allocation({recipient: community, amount: 350_000_000 ether});
-        allocations[1] = WebAI3Token.Allocation({recipient: team, amount: 200_000_000 ether});
-        allocations[2] = WebAI3Token.Allocation({recipient: investors, amount: 150_000_000 ether});
-        allocations[3] = WebAI3Token.Allocation({recipient: treasury, amount: 150_000_000 ether});
-        allocations[4] = WebAI3Token.Allocation({recipient: incentives, amount: 100_000_000 ether});
-        allocations[5] = WebAI3Token.Allocation({recipient: liquidity, amount: 50_000_000 ether});
+        allocations[0] = WebAI3Token.Allocation({ recipient: community, amount: 350_000_000 ether });
+        allocations[1] = WebAI3Token.Allocation({ recipient: team, amount: 200_000_000 ether });
+        allocations[2] = WebAI3Token.Allocation({ recipient: investors, amount: 150_000_000 ether });
+        allocations[3] = WebAI3Token.Allocation({ recipient: treasury, amount: 150_000_000 ether });
+        allocations[4] = WebAI3Token.Allocation({
+            recipient: incentives, amount: 100_000_000 ether
+        });
+        allocations[5] = WebAI3Token.Allocation({ recipient: liquidity, amount: 50_000_000 ether });
     }
 
-    function _allocationsForPermit() internal view returns (WebAI3Token.Allocation[] memory allocations) {
+    function _allocationsForPermit()
+        internal
+        view
+        returns (WebAI3Token.Allocation[] memory allocations)
+    {
         allocations = new WebAI3Token.Allocation[](2);
-        allocations[0] = WebAI3Token.Allocation({recipient: alice, amount: 600_000_000 ether});
-        allocations[1] = WebAI3Token.Allocation({recipient: treasury, amount: 400_000_000 ether});
+        allocations[0] = WebAI3Token.Allocation({ recipient: alice, amount: 600_000_000 ether });
+        allocations[1] = WebAI3Token.Allocation({ recipient: treasury, amount: 400_000_000 ether });
     }
 
-    function transferToken(address tokenAddress, address to, uint256 amount) external returns (bool) {
+    function transferToken(address tokenAddress, address to, uint256 amount)
+        external
+        returns (bool)
+    {
         return WebAI3Token(tokenAddress).transfer(to, amount);
     }
 }

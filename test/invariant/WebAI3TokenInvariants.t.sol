@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {StdInvariant} from "forge-std/StdInvariant.sol";
-import {Test} from "forge-std/Test.sol";
-import {WebAI3Token} from "../../src/WebAI3Token.sol";
-import {WebAI3TokenHandler} from "./WebAI3TokenHandler.t.sol";
+import { StdInvariant } from "forge-std/StdInvariant.sol";
+import { Test } from "forge-std/Test.sol";
+import { WebAI3Token } from "../../src/WebAI3Token.sol";
+import { WebAI3TokenHandler } from "./WebAI3TokenHandler.t.sol";
 
 contract WebAI3TokenInvariants is StdInvariant, Test {
     address internal admin = makeAddr("admin");
@@ -48,13 +48,19 @@ contract WebAI3TokenInvariants is StdInvariant, Test {
         assertEq(totalTracked, token.totalSupply());
     }
 
-    function _defaultAllocations() internal view returns (WebAI3Token.Allocation[] memory allocations) {
+    function _defaultAllocations()
+        internal
+        view
+        returns (WebAI3Token.Allocation[] memory allocations)
+    {
         allocations = new WebAI3Token.Allocation[](6);
-        allocations[0] = WebAI3Token.Allocation({recipient: community, amount: 350_000_000 ether});
-        allocations[1] = WebAI3Token.Allocation({recipient: team, amount: 200_000_000 ether});
-        allocations[2] = WebAI3Token.Allocation({recipient: investors, amount: 150_000_000 ether});
-        allocations[3] = WebAI3Token.Allocation({recipient: treasury, amount: 150_000_000 ether});
-        allocations[4] = WebAI3Token.Allocation({recipient: incentives, amount: 100_000_000 ether});
-        allocations[5] = WebAI3Token.Allocation({recipient: liquidity, amount: 50_000_000 ether});
+        allocations[0] = WebAI3Token.Allocation({ recipient: community, amount: 350_000_000 ether });
+        allocations[1] = WebAI3Token.Allocation({ recipient: team, amount: 200_000_000 ether });
+        allocations[2] = WebAI3Token.Allocation({ recipient: investors, amount: 150_000_000 ether });
+        allocations[3] = WebAI3Token.Allocation({ recipient: treasury, amount: 150_000_000 ether });
+        allocations[4] = WebAI3Token.Allocation({
+            recipient: incentives, amount: 100_000_000 ether
+        });
+        allocations[5] = WebAI3Token.Allocation({ recipient: liquidity, amount: 50_000_000 ether });
     }
 }

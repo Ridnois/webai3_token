@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {WebAI3Token} from "../../src/WebAI3Token.sol";
+import { Test } from "forge-std/Test.sol";
+import { WebAI3Token } from "../../src/WebAI3Token.sol";
 
 contract WebAI3TokenHandler is Test {
     WebAI3Token internal immutable TOKEN;
@@ -32,17 +32,17 @@ contract WebAI3TokenHandler is Test {
         amount = bound(amount, 0, balance);
 
         vm.prank(from);
-        try TOKEN.transfer(to, amount) {} catch {}
+        try TOKEN.transfer(to, amount) { } catch { }
     }
 
     function pause() external {
         vm.prank(ADMIN);
-        try TOKEN.pause() {} catch {}
+        try TOKEN.pause() { } catch { }
     }
 
     function unpause() external {
         vm.prank(ADMIN);
-        try TOKEN.unpause() {} catch {}
+        try TOKEN.unpause() { } catch { }
     }
 
     function actorCount() external view returns (uint256) {
