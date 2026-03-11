@@ -16,6 +16,8 @@ The system is implemented through three coordinated smart contracts:
 2. **TreasuryContract** — Holds raised funds and distributes according to governance
 3. **WebAI3Token** — Standard ERC-20 with allocation, vesting, and governance features
 
+**Network:** Ethereum Mainnet (Production) & Ethereum Sepolia (Testing)
+
 ---
 
 ## 1. Presale Overview
@@ -293,7 +295,7 @@ Allocation[] memory allocations = [
 ```
 Step 1: Connect Wallet
 ├─ User visits presale.webai3.io
-├─ Connects MetaMask/Wallet to Base Sepolia testnet
+├─ Connects MetaMask/Wallet to Ethereum Sepolia testnet
 └─ UI displays current phase, price, progress
 
 Step 2: Approve USDC Spending
@@ -585,7 +587,7 @@ Upon presale completion, the DAO will provide liquidity to ensure stable launch.
 
 ### Liquidity Pool Design
 
-**Pair:** AIC / USDC on Base L2 (Uniswap v3)
+**Pair:** AIC / USDC on Ethereum Mainnet (Uniswap v3)
 
 **Depth Requirement:**
 - $3M USDC + 37.5M AIC tokens
@@ -674,7 +676,7 @@ Upon presale completion, the DAO will provide liquidity to ensure stable launch.
 3. **Deploy Presale Contract**
    ```
    → PresaleContract(
-        usdc=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,
+        usdc=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,
         aic=0xABC...,
         treasury=0xDEF...
       )
@@ -1343,6 +1345,26 @@ function testFuzz_BuyTokensWithRandomAmounts(uint256 usdcAmount) public {
 
 ## 13. Deployment Guide
 
+### 13.0 Network Configuration
+
+**Production Deployment (Ethereum Mainnet):**
+- Network: Ethereum Mainnet
+- Chain ID: 1
+- RPC Endpoint: `https://eth.llamarpc.com` (or Infura/Alchemy)
+- USDC Address: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
+- Block Explorer: https://etherscan.io
+- Gas Requirements: Estimated 2-3 ETH for contract deployments
+
+**Testing Deployment (Ethereum Sepolia):**
+- Network: Ethereum Sepolia Testnet
+- Chain ID: 11155111
+- RPC Endpoint: `https://sepolia.infura.io/v3/YOUR_PROJECT_ID` (or public endpoint)
+- USDC Address: `0x6F14C02Fc1F78322cFd7d56a6350807271F94523` (Sepolia test USDC)
+- Block Explorer: https://sepolia.etherscan.io
+- Faucet for testnet ETH: https://sepoliafaucet.com
+
+**Important:** Always test thoroughly on Sepolia before mainnet deployment.
+
 ### 13.1 Pre-Deployment Checklist
 
 - [ ] All contracts audited and approved
@@ -1350,7 +1372,7 @@ function testFuzz_BuyTokensWithRandomAmounts(uint256 usdcAmount) public {
 - [ ] Solidity version confirmed: 0.8.24
 - [ ] OpenZeppelin version confirmed: v5.x
 - [ ] Team and investor multisig addresses confirmed
-- [ ] USDC address on Base verified: `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`
+- [ ] USDC address on Ethereum verified: `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`
 - [ ] All phase parameters finalized and documented
 - [ ] Treasury multisig set up and tested
 
@@ -1359,7 +1381,7 @@ function testFuzz_BuyTokensWithRandomAmounts(uint256 usdcAmount) public {
 **Step 1: Deploy WebAI3Token**
 ```bash
 forge script script/DeployWebAI3Token.s.sol \
-  --rpc-url https://mainnet.base.org \
+  --rpc-url https://eth.llamarpc.com \
   --broadcast
 ```
 
@@ -1368,8 +1390,8 @@ Record token address: `0xABC...`
 **Step 2: Deploy Treasury**
 ```bash
 forge script script/DeployTreasury.s.sol \
-  --constructor-args 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
-  --rpc-url https://mainnet.base.org \
+  --constructor-args 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 \
+  --rpc-url https://eth.llamarpc.com \
   --broadcast
 ```
 
@@ -1379,10 +1401,10 @@ Record treasury address: `0xDEF...`
 ```bash
 forge script script/DeployPresale.s.sol \
   --constructor-args \
-  0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913 \
+  0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 \
   0xABC... \
   0xDEF... \
-  --rpc-url https://mainnet.base.org \
+  --rpc-url https://eth.llamarpc.com \
   --broadcast
 ```
 
@@ -1392,25 +1414,25 @@ Record presale address: `0x123...`
 ```bash
 cast send 0x123... "initializePresale((uint256,uint256,uint256,uint256,uint256,uint256)[])" \
   "[($(TZ=UTC date -d '2026-03-10 10:00 UTC' +%s),$(TZ=UTC date -d '2026-03-24 10:00 UTC' +%s),500000000000,10000,50000000000000000000000000,0), ...]" \
-  --rpc-url https://mainnet.base.org \
+  --rpc-url https://eth.llamarpc.com \
   --private-key $PRIVATE_KEY
 ```
 
-**Step 5: Verify Contracts on Basescan**
+**Step 5: Verify Contracts on Etherscan**
 ```bash
 forge verify-contract \
   0xABC... \
   src/WebAI3Token.sol:WebAI3Token \
-  --chain-id 8453 \
+  --chain-id 1 \
   --etherscan-api-key $BASESCAN_API_KEY
 ```
 
 **Step 6: Verify State**
 ```bash
-cast call 0x123... "getPhaseCount()(uint256)" --rpc-url https://mainnet.base.org
+cast call 0x123... "getPhaseCount()(uint256)" --rpc-url https://eth.llamarpc.com
 # Should return: 4
 
-cast call 0x123... "getPresaleStatus()(uint256,uint256,uint256,uint256,bool)" --rpc-url https://mainnet.base.org
+cast call 0x123... "getPresaleStatus()(uint256,uint256,uint256,uint256,bool)" --rpc-url https://eth.llamarpc.com
 # Should show active phase, zeros for raised/sold, etc.
 ```
 
@@ -1449,7 +1471,7 @@ If security issue detected:
 ```bash
 # 1. Pause presale immediately
 cast send 0x123... "pause()" \
-  --rpc-url https://mainnet.base.org \
+  --rpc-url https://eth.llamarpc.com \
   --private-key $PRIVATE_KEY
 
 # 2. Pause public notification
@@ -1457,7 +1479,7 @@ cast send 0x123... "pause()" \
 # 4. Decide: resume or cancel presale
 # 5. Resume if safe
 cast send 0x123... "unpause()" \
-  --rpc-url https://mainnet.base.org \
+  --rpc-url https://eth.llamarpc.com \
   --private-key $PRIVATE_KEY
 ```
 
@@ -1557,16 +1579,17 @@ Optimization strategies:
 - **Solidity 0.8.24:** https://docs.soliditylang.org
 - **OpenZeppelin Contracts v5:** https://docs.openzeppelin.com/contracts/5.x
 - **ERC-20 Standard:** https://eips.ethereum.org/EIPS/eip-20
-- **Base L2:** https://base.org
+- **Ethereum:** https://ethereum.org
 - **Uniswap v3:** https://uniswap.org
 - **ReentrancyGuard:** https://docs.openzeppelin.com/contracts/5.x/api/security
 - **Foundry Book:** https://book.getfoundry.sh/
 
 ---
 
-**Document Version:** 2.0
-**Status:** Complete - Implementation Ready
+**Document Version:** 2.1
+**Status:** Complete - Implementation Ready (Ethereum Network)
 **Last Updated:** March 2026
+**Networks:** Ethereum Mainnet (Production) | Ethereum Sepolia (Testing)
 
 **Next Steps for Engineering Team:**
 1. Review complete contract implementation (Section 10)
@@ -1574,6 +1597,6 @@ Optimization strategies:
 3. Write comprehensive test suite (Section 12)
 4. Perform internal security review
 5. Engage external auditor
-6. Deploy to Base Sepolia testnet
+6. Deploy to Ethereum Sepolia testnet
 7. Community testing and feedback
-8. Deploy to Base mainnet (Section 13)
+8. Deploy to Ethereum mainnet (Section 13)

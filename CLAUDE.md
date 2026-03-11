@@ -1,6 +1,6 @@
 # CLAUDE.md — webai3-token
 
-ERC-20 governance token (AIC) for the WebAI3 platform, deployed to Base L2. Built with Foundry and OpenZeppelin v5. The entire token supply is minted once at deployment — no post-deployment minting.
+ERC-20 governance token (AIC) for the WebAI3 platform, deployed to Ethereum. Built with Foundry and OpenZeppelin v5. The entire token supply is minted once at deployment — no post-deployment minting.
 
 ---
 
@@ -12,7 +12,7 @@ ERC-20 governance token (AIC) for the WebAI3 platform, deployed to Base L2. Buil
 | Build/Test Framework | Foundry (forge, cast, anvil) |
 | Standard Library | OpenZeppelin Contracts v5 |
 | Testing Layers | Unit + fuzz + invariant tests |
-| Deployment Target | Base L2 Mainnet & Sepolia testnet |
+| Deployment Target | Ethereum Mainnet & Sepolia testnet |
 
 ---
 
