@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document describes the technical architecture, mechanics, and implementation strategy for the WebAI3 Token (AIC) presale. The presale is designed to raise **$5M USD** through a **hybrid, fund-driven phase system** with optional time-based fallbacks. Early-phase investors enjoy 10x price appreciation incentives, creating strong demand dynamics and community engagement.
+This document describes the technical architecture, mechanics, and implementation strategy for the WebAI3 Token (AIC) presale. The presale is designed to raise **$7M USD** through a **hybrid, fund-driven phase system** with optional time-based fallbacks. Early-phase investors enjoy 12x price appreciation incentives, creating strong demand dynamics and community engagement.
 
 The system is implemented through three coordinated smart contracts:
 1. **PresaleContract** — Manages contributions, token allocation, and phase transitions
@@ -27,7 +27,7 @@ The system is implemented through three coordinated smart contracts:
 The presale serves four critical functions:
 
 **1. Liquidity Bootstrap**
-- Raises $5M to fund initial liquidity pools (DEX pair seeding)
+- Raises $7M to fund initial liquidity pools (DEX pair seeding)
 - Enables fair market price discovery post-launch
 - Prevents launch-day liquidity crisis
 
@@ -44,28 +44,31 @@ The presale serves four critical functions:
 **4. Market Narrative & Adoption**
 - Demonstrates product-market fit and investor confidence
 - Creates FOMO and organic marketing through phase progression
-- Price appreciation (10x from Phase 1 to listing) signals success
+- Price appreciation (12x from Phase 1 to listing) signals success
 
 ### Presale Target & Pricing
 
 | Metric | Value | Notes |
 |---|---|---|
-| **Total Raise Target** | $5,000,000 | Hard cap |
+| **Total Raise Target** | $7,000,000 | Hard cap |
 | **Token Supply (Total)** | 1,000,000,000 AIC | Fixed, immutable |
 | **Presale Allocation** | 500,000,000 AIC (50%) | Distributed to buyers |
-| **Phase 1 Price** | $0.01 | Entry price (lowest) |
-| **Phase 4 Price** | $0.04 | Late phase (4x Phase 1) |
-| **Listing Price Target** | $0.08 | Post-launch market price (2x Phase 4) |
-| **Max Presale Investor Return** | 8x | Phase 1 → Listing (0.01 → 0.08) |
+| **Phase 1 Price** | $0.010 | Entry price (lowest) |
+| **Phase 7 Price** | $0.070 | Late phase (7x Phase 1) |
+| **Listing Price Target** | $0.120 | Post-launch market price (1.71x Phase 7) |
+| **Max Presale Investor Return** | 12x | Phase 1 → Listing (0.010 → 0.120) |
 
 ### Incentive Structure
 
-The presale creates powerful price appreciation dynamics:
+The presale creates powerful price appreciation dynamics across seven phases:
 
-- **Phase 1 Early Birds:** 0.01 USDC per token → 8x to listing
-- **Phase 2 Participants:** 0.015 USDC per token → 5.3x to listing
-- **Phase 3 Participants:** 0.025 USDC per token → 3.2x to listing
-- **Phase 4 Latecomers:** 0.04 USDC per token → 2x to listing
+- **Phase 1 Early Birds:** $0.010 per token → 12x to listing
+- **Phase 2 Participants:** $0.013 per token → 9.2x to listing
+- **Phase 3 Participants:** $0.020 per token → 6x to listing
+- **Phase 4 Participants:** $0.028 per token → 4.3x to listing
+- **Phase 5 Participants:** $0.038 per token → 3.2x to listing
+- **Phase 6 Participants:** $0.053 per token → 2.3x to listing
+- **Phase 7 Latecomers:** $0.070 per token → 1.71x to listing
 
 This incentivizes participation in earlier phases and creates a natural "push" through phases as investors seek better prices.
 
@@ -75,7 +78,7 @@ This incentivizes participation in earlier phases and creates a natural "push" t
 
 ### Phase Structure
 
-The presale progresses through **four phases** based on **cumulative funds raised**. Each phase has:
+The presale progresses through **seven phases** based on **cumulative funds raised**. Each phase has:
 - A funding target range (triggers transition when reached)
 - A token price (increases per phase)
 - A token allocation cap
@@ -83,10 +86,13 @@ The presale progresses through **four phases** based on **cumulative funds raise
 
 | Phase | Raise Range | Price | Allocation | Duration |
 |---|---|---|---|---|
-| Phase 1 | $0 – $500k | $0.01 | 50M AIC | 14 days |
-| Phase 2 | $500k – $1.5M | $0.015 | 66.67M AIC | 21 days |
-| Phase 3 | $1.5M – $3M | $0.025 | 60M AIC | 28 days |
-| Phase 4 | $3M – $5M | $0.04 | 313.33M AIC | 35 days |
+| Phase 1 | $0 – $500k | $0.010 | 50M AIC | 14 days |
+| Phase 2 | $500k – $1M | $0.013 | 38.5M AIC | 14 days |
+| Phase 3 | $1M – $2M | $0.020 | 50M AIC | 14 days |
+| Phase 4 | $2M – $3.5M | $0.028 | 53.6M AIC | 21 days |
+| Phase 5 | $3.5M – $5M | $0.038 | 39.5M AIC | 21 days |
+| Phase 6 | $5M – $6M | $0.053 | 18.9M AIC | 21 days |
+| Phase 7 | $6M – $7M | $0.070 | 250M AIC | 35 days |
 
 **Total Presale Allocation:** 500M AIC (50% of supply)
 
@@ -106,16 +112,16 @@ if block.timestamp >= phaseDeadline AND totalRaisedUSDC >= phaseMinimum:
 ```
 
 **Example Scenario:**
-- Phase 1 opens at Day 0 with $0.01 price
+- Phase 1 opens at Day 0 with $0.010 price
 - Phase 1 reaches $500k on Day 5
-- Contract automatically transitions to Phase 2 at $0.015 price
-- Investors who waited are now charged 50% more per token
+- Contract automatically transitions to Phase 2 at $0.013 price
+- Investors who waited are now charged 30% more per token
 
 This creates urgency and strong incentive to buy early.
 
 ### Failure Cases
 
-**Hard Cap Reached:** If $5M is raised before Phase 4 ends, presale closes immediately.
+**Hard Cap Reached:** If $7M is raised before Phase 7 ends, presale closes immediately.
 
 **Phase Expires:** If a phase reaches its time deadline without progressing to next phase:
 - Phase remains open at current price
@@ -174,13 +180,13 @@ struct Phase {
 // Global state
 uint256 public totalRaisedUSDC;  // Cumulative funds
 uint256 public totalTokensSold;  // Cumulative token allocation
-uint256 public hardCap = 5_000_000e6;  // $5M in USDC (6 decimals)
+uint256 public hardCap = 7_000_000e6;  // $7M in USDC (6 decimals)
 
 mapping(address => uint256) public contributions;  // USDC per user
 mapping(address => uint256) public tokenAllocated;  // AIC per user
 mapping(address => bool) public claimed;  // Post-TGE claim flag
 
-Phase[] public phases;  // Array of 4 phases
+Phase[] public phases;  // Array of 7 phases
 bool public presaleActive;  // Start/stop flag
 ```
 
@@ -256,8 +262,8 @@ contract Treasury {
 
 1. **Presale Phase:** PresaleContract forwards all USDC to Treasury
 2. **Post-Presale (Day 1-7):** Treasury multisig approves liquidity provision
-3. **Liquidity Provision:** Treasury deposits 60% ($3M) + 300M AIC tokens to DEX
-4. **Remaining Funds:** 40% ($2M) held for development and operations
+3. **Liquidity Provision:** Treasury deposits 60% ($4.2M) + 300M AIC tokens to DEX
+4. **Remaining Funds:** 40% ($2.8M) held for development and operations
 
 ### 3.3 WebAI3Token Contract
 
@@ -320,7 +326,7 @@ Step 4: Confirmation
 Step 5: Phase Advancement (Automatic)
 ├─ If totalRaisedUSDC >= $500k:
 │  ├─ Contract transitions to Phase 2
-│  ├─ Price changes to $0.015 per token
+│  ├─ Price changes to $0.013 per token
 │  └─ UI updates to show Phase 2 active
 └─ If block.timestamp >= phaseEnd AND no phase cap:
    ├─ Phase time expires
@@ -404,30 +410,30 @@ When cumulative funds reach phase cap, the presale **automatically advances** to
 
 ```
 Day 0, 10:00 UTC — Phase 1 Begins
-├─ Price: $0.01 per AIC
+├─ Price: $0.010 per AIC
 ├─ Target: $500k
 └─ Time limit: 14 days (unless cap hit sooner)
 
-Day 4, 15:30 UTC — $500k Raised
+Day 5, 14:30 UTC — $500k Raised
 ├─ Contract detects totalRaisedUSDC >= $500,000
 ├─ Phase 1 closes immediately
 ├─ Phase 2 begins instantly
-├─ Price: $0.015 per AIC
-└─ Emit: PhaseAdvanced(phase=2, price=0.015e6)
+├─ Price: $0.013 per AIC
+└─ Emit: PhaseAdvanced(phase=2, price=0.013e6)
 
-Day 5, 08:00 UTC — New Buyer Tries to Buy
+Day 6, 09:00 UTC — New Buyer Tries to Buy
 ├─ Calls buyTokens(1000 USDC)
 ├─ getActivePhase() returns 2 (Phase 2)
-├─ Price applied: $0.015 per token
-├─ Tokens allocated: 1000 / 0.015 = 66,667 AIC
-├─ User realizes they paid 50% more than 24 hours ago
+├─ Price applied: $0.013 per token
+├─ Tokens allocated: 1000 / 0.013 = 76,923 AIC
+├─ User realizes they paid 30% more than 24 hours ago
 └─ FOMO effect drives faster Phase 2 completion
 
-Day 23, 19:45 UTC — $1.5M Raised
+Day 18, 11:45 UTC — $1M Raised
 ├─ Phase 2 cap reached
 ├─ Phase 3 begins immediately
-├─ Price: $0.025 per AIC
-└─ 2.5x increase from Phase 1 entry price
+├─ Price: $0.020 per AIC
+└─ 2x increase from Phase 1 entry price
 ```
 
 ### Time-Based Fallback (Soft Deadline)
@@ -448,7 +454,7 @@ Day 14, 10:00 UTC (Phase 1 Deadline)
 
 ### Hard Cap & Presale Closure
 
-If $5M is raised at any point, the presale stops immediately.
+If $7M is raised at any point, the presale stops immediately.
 
 ```solidity
 function buyTokens(uint256 usdcAmount) external {
@@ -576,23 +582,23 @@ Rounding down is acceptable (buyer loses dust, not material).
 
 Upon presale completion, the DAO will provide liquidity to ensure stable launch.
 
-**Fund Allocation After $5M Raise:**
+**Fund Allocation After $7M Raise:**
 
 | Category | Amount | Purpose |
 |---|---|---|
-| **DEX Liquidity** | $3.0M (60%) | Uniswap v3 / Curve pool |
-| **Development** | $1.0M (20%) | Engineering, security, ops |
-| **Team Reserves** | $0.5M (10%) | Operations, payroll buffer |
-| **Marketing** | $0.5M (10%) | Community growth, partnerships |
+| **DEX Liquidity** | $4.2M (60%) | Uniswap v3 / Curve pool |
+| **Development** | $1.4M (20%) | Engineering, security, ops |
+| **Team Reserves** | $0.7M (10%) | Operations, payroll buffer |
+| **Marketing** | $0.7M (10%) | Community growth, partnerships |
 
 ### Liquidity Pool Design
 
 **Pair:** AIC / USDC on Ethereum Mainnet (Uniswap v3)
 
 **Depth Requirement:**
-- $3M USDC + 37.5M AIC tokens
-- Creates mid-price ~$0.08 (2x Phase 4 entry, 8x Phase 1 entry)
-- Provides 24-hour trading volume cushion: ~$5M at 2% slippage
+- $4.2M USDC + 35M AIC tokens
+- Creates launch price ~$0.120 (1.71x Phase 7 entry, 12x Phase 1 entry)
+- Provides 24-hour trading volume cushion: ~$7M at 2% slippage
 
 **Why Deep Liquidity Matters:**
 
@@ -650,13 +656,16 @@ Upon presale completion, the DAO will provide liquidity to ensure stable launch.
 | **T-30 days** | Feb 10, 2026 | Contracts audited, deployed to testnet |
 | **T-14 days** | Feb 24, 2026 | Presale whitelist opens (optional KYC) |
 | **T-7 days** | Mar 3, 2026 | Marketing campaign, community discussions |
-| **T-0 (TGE)** | Mar 10, 2026 | Presale Phase 1 opens, Phase 1 begins |
+| **T-0 (TGE)** | Mar 10, 2026 | Presale Phase 1 opens |
 | **T+5 days** | Mar 15, 2026 | Expected Phase 2 transition (if $500k raised) |
-| **T+20 days** | Mar 30, 2026 | Expected Phase 3 transition (if $1.5M raised) |
-| **T+40 days** | Apr 19, 2026 | Expected Phase 4 transition (if $3M raised) |
-| **T+60 days** | May 9, 2026 | Presale closes (hard cap or deadline) |
-| **T+70 days** | May 19, 2026 | Liquidity provision (DEX listing) |
-| **T+75 days** | May 24, 2026 | Airdrop/token claim enabled |
+| **T+12 days** | Mar 22, 2026 | Expected Phase 3 transition (if $1M raised) |
+| **T+25 days** | Apr 4, 2026 | Expected Phase 4 transition (if $2M raised) |
+| **T+40 days** | Apr 19, 2026 | Expected Phase 5 transition (if $3.5M raised) |
+| **T+55 days** | May 4, 2026 | Expected Phase 6 transition (if $5M raised) |
+| **T+65 days** | May 14, 2026 | Expected Phase 7 transition (if $6M raised) |
+| **T+85 days** | Jun 3, 2026 | Presale closes (hard cap reached or deadline) |
+| **T+90 days** | Jun 8, 2026 | Liquidity provision (DEX listing) |
+| **T+100 days** | Jun 18, 2026 | Airdrop/token claim enabled |
 
 ### Deployment Sequence
 
@@ -689,9 +698,9 @@ Upon presale completion, the DAO will provide liquidity to ensure stable launch.
    ✓ Token total supply = 1B AIC
    ✓ Presale allocation = 500M AIC (in presale contract)
    ✓ All addresses correct (no typos)
-   ✓ Phase prices: 0.01, 0.015, 0.025, 0.04
-   ✓ Phase caps: $500k, $1.5M, $3M, $5M cumulative
-   ✓ Hard cap: $5M total
+   ✓ Phase prices: $0.010, $0.013, $0.020, $0.028, $0.038, $0.053, $0.070
+   ✓ Phase caps: $500k, $1M, $2M, $3.5M, $5M, $6M, $7M cumulative
+   ✓ Hard cap: $7M total
    ```
 
 5. **Enable Presale**
@@ -713,7 +722,7 @@ Upon presale completion, the DAO will provide liquidity to ensure stable launch.
    → Users call claimTokens() to receive AIC
    → Users trade on Uniswap: AIC ↔ USDC
    → Price discovered by market forces
-   → Target listing price: $0.08 (2x Phase 4 entry, 8x Phase 1)
+   → Target listing price: $0.120 (1.71x Phase 7 entry, 12x Phase 1)
    ```
 
 ---
@@ -792,7 +801,7 @@ contract PresaleContract is IPresaleContract, ReentrancyGuard, Pausable, Ownable
     address public immutable treasury;
 
     // Constants
-    uint256 public constant HARD_CAP = 5_000_000e6;  // $5M (USDC has 6 decimals)
+    uint256 public constant HARD_CAP = 7_000_000e6;  // $7M (USDC has 6 decimals)
     uint256 public constant PRESALE_ALLOCATION = 500_000_000 ether;  // 500M AIC tokens
 
     // State variables
@@ -1054,7 +1063,7 @@ contract PresaleContract is IPresaleContract, ReentrancyGuard, Pausable, Ownable
 
 | Variable | Type | Purpose | Example |
 |---|---|---|---|
-| `phases` | `Phase[]` | Array of 4 presale phases | `phases[0..3]` |
+| `phases` | `Phase[]` | Array of 7 presale phases | `phases[0..6]` |
 | `totalRaisedUSDC` | `uint256` | Cumulative USDC raised | `1_500_000e6` |
 | `totalTokensSold` | `uint256` | Cumulative AIC allocated | `100_000_000e18` |
 | `presaleActive` | `bool` | Presale ongoing flag | `true` → `false` on finish |
@@ -1075,38 +1084,20 @@ contract PresaleContract is IPresaleContract, ReentrancyGuard, Pausable, Ownable
                                 │
                   initializePresale(phases)
                                 │
-                     ┌──────────▼──────────┐
-                     │  Phase 1 Active     │
-                     │  Price: $0.01       │
-                     │ presaleActive=true  │
-                     └──────────┬──────────┘
+          ┌─────────────────────▼─────────────────────┐
+          │         Phase 1: $0.010/AIC               │
+          │    presaleActive=true, Cap: $500k         │
+          └─────────────────────┬─────────────────────┘
+                 totalRaisedUSDC >= $500k
                                 │
-                 buyTokens() x N (users)
-                    totalRaisedUSDC < $500k
-                                │
-                     ┌──────────▼──────────┐
-                     │  Phase 2 Active     │◄──────────────┐
-                     │  Price: $0.015      │ Auto-advance  │
-                     └──────────┬──────────┘ when cap hit  │
-                                │                          │
-                 buyTokens() x N (users)                   │
-                    totalRaisedUSDC < $1.5M─────────────────┘
-                                │
-                     ┌──────────▼──────────┐
-                     │  Phase 3 Active     │
-                     │  Price: $0.025      │
-                     └──────────┬──────────┘
-                                │
-                 buyTokens() x N (users)
-                    totalRaisedUSDC < $3M
-                                │
-                     ┌──────────▼──────────┐
-                     │  Phase 4 Active     │
-                     │  Price: $0.04       │
-                     └──────────┬──────────┘
-                                │
-                 buyTokens() x N (users)
-                    totalRaisedUSDC >= $5M
+          ├─ Phase 2: $0.013/AIC, Cap: $1M
+          ├─ Phase 3: $0.020/AIC, Cap: $2M
+          ├─ Phase 4: $0.028/AIC, Cap: $3.5M
+          ├─ Phase 5: $0.038/AIC, Cap: $5M
+          ├─ Phase 6: $0.053/AIC, Cap: $6M
+          │
+          └─ Phase 7: $0.070/AIC, Cap: $7M
+                 totalRaisedUSDC >= $7M
                                 │
                      ┌──────────▼──────────────┐
                      │ Presale Ended          │
@@ -1240,30 +1231,30 @@ contract PresaleContractTest is Test {
     }
 
     function test_InitializePresale() public {
-        PresaleContract.Phase[] memory phases = new PresaleContract.Phase[](4);
+        PresaleContract.Phase[] memory phases = new PresaleContract.Phase[](7);
 
         phases[0] = PresaleContract.Phase({
             startTime: block.timestamp,
             endTime: block.timestamp + 14 days,
             phaseCap: 500_000e6,
-            pricePerToken: 0.01e6,
+            pricePerToken: 0.010e6,
             maxTokensPhase: 50_000_000 ether,
             soldTokensPhase: 0
         });
 
         phases[1] = PresaleContract.Phase({
             startTime: block.timestamp + 14 days,
-            endTime: block.timestamp + 35 days,
-            phaseCap: 1_500_000e6,
-            pricePerToken: 0.015e6,
-            maxTokensPhase: 66_666_667 ether,
+            endTime: block.timestamp + 28 days,
+            phaseCap: 1_000_000e6,
+            pricePerToken: 0.013e6,
+            maxTokensPhase: 38_500_000 ether,
             soldTokensPhase: 0
         });
 
-        // ... more phases
+        // ... phases[2..6] defined similarly for Phase 3-7
 
         presale.initializePresale(phases);
-        assert(presale.getPhaseCount() == 4);
+        assert(presale.getPhaseCount() == 7);
     }
 
     function test_BuyTokens() public {
@@ -1509,10 +1500,13 @@ Wait, let me recalculate...
 
 | Event | Trigger | Result |
 |---|---|---|
-| Phase 1 → 2 | `totalRaisedUSDC >= $500k` | Auto-advance, price becomes $0.015 |
-| Phase 2 → 3 | `totalRaisedUSDC >= $1.5M` | Auto-advance, price becomes $0.025 |
-| Phase 3 → 4 | `totalRaisedUSDC >= $3M` | Auto-advance, price becomes $0.04 |
-| Phase 4 → Ended | `totalRaisedUSDC >= $5M` | Hard cap reached, presale ends |
+| Phase 1 → 2 | `totalRaisedUSDC >= $500k` | Auto-advance, price becomes $0.013 |
+| Phase 2 → 3 | `totalRaisedUSDC >= $1M` | Auto-advance, price becomes $0.020 |
+| Phase 3 → 4 | `totalRaisedUSDC >= $2M` | Auto-advance, price becomes $0.028 |
+| Phase 4 → 5 | `totalRaisedUSDC >= $3.5M` | Auto-advance, price becomes $0.038 |
+| Phase 5 → 6 | `totalRaisedUSDC >= $5M` | Auto-advance, price becomes $0.053 |
+| Phase 6 → 7 | `totalRaisedUSDC >= $6M` | Auto-advance, price becomes $0.070 |
+| Phase 7 → Ended | `totalRaisedUSDC >= $7M` | Hard cap reached, presale ends |
 | Any Phase → Time Expired | `block.timestamp >= phaseEnd` | Phase extends at locked price |
 
 ### 15.3 Gas Optimization Notes
