@@ -20,9 +20,8 @@ contract DeployWebAI3Token is Script {
         allocations[1] = WebAI3Token.Allocation({ recipient: team, amount: 200_000_000 ether });
         allocations[2] = WebAI3Token.Allocation({ recipient: investors, amount: 150_000_000 ether });
         allocations[3] = WebAI3Token.Allocation({ recipient: treasury, amount: 150_000_000 ether });
-        allocations[4] = WebAI3Token.Allocation({
-            recipient: incentives, amount: 100_000_000 ether
-        });
+        allocations[4] =
+            WebAI3Token.Allocation({ recipient: incentives, amount: 100_000_000 ether });
         allocations[5] = WebAI3Token.Allocation({ recipient: liquidity, amount: 50_000_000 ether });
 
         vm.startBroadcast(deployerPrivateKey);
