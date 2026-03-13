@@ -32,14 +32,13 @@ You also need:
 
 - funded Sepolia deployer wallet (Sepolia ETH)
 - a Sepolia USDC-compatible token address with **6 decimals**
-- deployed AIC token address
 - optional Etherscan API key for source verification
 
 ---
 
-## 2) Sepolia Environment File
+## 2) Sepolia Base Environment File
 
-Create `.env.sepolia`:
+Create `.env.sepolia` with the variables needed **before** deploying the AIC token. The `AIC_TOKEN` address will be added in step 3 after deployment.
 
 ```bash
 cat > .env.sepolia <<'EOF_ENV'
@@ -50,7 +49,6 @@ DEPLOYER=0xYOUR_DEPLOYER_ADDRESS
 
 # Tokens on Sepolia
 USDC=0xUSDC_6_DECIMALS_TOKEN
-AIC_TOKEN=0xAIC_TOKEN
 
 # Operators
 PAUSER=0xPAUSER_ADDRESS
@@ -79,9 +77,54 @@ set +a
 
 ---
 
-## 3) Sepolia Preflight Checks
+## 3) Deploy AIC Token on Sepolia
 
-### 3.1 Chain and account checks
+The presale's `ClaimModule` requires a deployed AIC token address. Deploy it now using the existing deployment script.
+
+Set the token allocation env vars. For Sepolia testing, you can point all allocations to your deployer so all 1B tokens land in one wallet (you'll need at least 500M to fund the ClaimModule in step 9):
+
+```bash
+export TOKEN_ADMIN="$DEPLOYER"
+export TOKEN_TREASURY="$DEPLOYER"
+export TOKEN_COMMUNITY="$DEPLOYER"
+export TOKEN_INVESTORS="$DEPLOYER"
+export TOKEN_TEAM="$DEPLOYER"
+export TOKEN_INCENTIVES="$DEPLOYER"
+export TOKEN_LIQUIDITY="$DEPLOYER"
+```
+
+Deploy:
+
+```bash
+forge script script/DeployWebAI3Token.s.sol \
+  --chain sepolia \
+  --rpc-url "$SEPOLIA_RPC_URL" \
+  --private-key "$PRIVATE_KEY" \
+  --broadcast
+```
+
+The deployed address is printed in the script output. Set it and append to `.env.sepolia`:
+
+```bash
+AIC_TOKEN=0xYOUR_DEPLOYED_AIC_ADDRESS
+echo "AIC_TOKEN=$AIC_TOKEN" >> .env.sepolia
+```
+
+Verify:
+
+```bash
+cast call "$AIC_TOKEN" "decimals()(uint8)" --rpc-url "$SEPOLIA_RPC_URL"
+# expected: 18
+
+cast call "$AIC_TOKEN" "totalSupply()(uint256)" --rpc-url "$SEPOLIA_RPC_URL"
+# expected: 1000000000000000000000000000 (1B * 1e18)
+```
+
+---
+
+## 4) Sepolia Preflight Checks
+
+### 4.1 Chain and account checks
 
 ```bash
 cast chain-id --rpc-url "$SEPOLIA_RPC_URL"
@@ -91,7 +134,7 @@ cast wallet address --private-key "$PRIVATE_KEY"
 cast balance "$DEPLOYER" --rpc-url "$SEPOLIA_RPC_URL"
 ```
 
-### 3.2 Token compatibility checks
+### 4.2 Token compatibility checks
 
 ```bash
 cast call "$USDC" "decimals()(uint8)" --rpc-url "$SEPOLIA_RPC_URL"
@@ -101,7 +144,7 @@ cast call "$AIC_TOKEN" "decimals()(uint8)" --rpc-url "$SEPOLIA_RPC_URL"
 # expected: 18
 ```
 
-### 3.3 Compile and test
+### 4.3 Compile and test
 
 ```bash
 forge build
@@ -110,7 +153,7 @@ forge test
 
 ---
 
-## 4) Deployment Parameters (Sepolia)
+## 5) Deployment Parameters (Sepolia)
 
 Choose timestamps and constants:
 
@@ -130,11 +173,11 @@ echo "$LIQUIDITY_PLAN_HASH"
 
 ---
 
-## 5) Deploy Contracts on Sepolia
+## 6) Deploy Contracts on Sepolia
 
 Use `--chain sepolia` on all `forge create` commands.
 
-### 5.1 LiquidityVault
+### 6.1 LiquidityVault
 
 ```bash
 LIQUIDITY_VAULT=$(forge create src/presale/LiquidityVault.sol:LiquidityVault \
@@ -148,7 +191,7 @@ LIQUIDITY_VAULT=$(forge create src/presale/LiquidityVault.sol:LiquidityVault \
 echo "LIQUIDITY_VAULT=$LIQUIDITY_VAULT"
 ```
 
-### 5.2 DevRunwayVault
+### 6.2 DevRunwayVault
 
 ```bash
 DEV_VAULT=$(forge create src/presale/DevRunwayVault.sol:DevRunwayVault \
@@ -162,7 +205,7 @@ DEV_VAULT=$(forge create src/presale/DevRunwayVault.sol:DevRunwayVault \
 echo "DEV_VAULT=$DEV_VAULT"
 ```
 
-### 5.3 TeamStreamVault
+### 6.3 TeamStreamVault
 
 ```bash
 TEAM_VAULT=$(forge create src/presale/TeamStreamVault.sol:TeamStreamVault \
@@ -176,7 +219,7 @@ TEAM_VAULT=$(forge create src/presale/TeamStreamVault.sol:TeamStreamVault \
 echo "TEAM_VAULT=$TEAM_VAULT"
 ```
 
-### 5.4 MarketingVault
+### 6.4 MarketingVault
 
 ```bash
 MARKETING_VAULT=$(forge create src/presale/MarketingVault.sol:MarketingVault \
@@ -190,7 +233,7 @@ MARKETING_VAULT=$(forge create src/presale/MarketingVault.sol:MarketingVault \
 echo "MARKETING_VAULT=$MARKETING_VAULT"
 ```
 
-### 5.5 PresaleVault
+### 6.5 PresaleVault
 
 ```bash
 PRESALE_VAULT=$(forge create src/presale/PresaleVault.sol:PresaleVault \
@@ -204,7 +247,7 @@ PRESALE_VAULT=$(forge create src/presale/PresaleVault.sol:PresaleVault \
 echo "PRESALE_VAULT=$PRESALE_VAULT"
 ```
 
-### 5.6 ClaimModule
+### 6.6 ClaimModule
 
 ```bash
 CLAIM_MODULE=$(forge create src/presale/ClaimModule.sol:ClaimModule \
@@ -218,7 +261,7 @@ CLAIM_MODULE=$(forge create src/presale/ClaimModule.sol:ClaimModule \
 echo "CLAIM_MODULE=$CLAIM_MODULE"
 ```
 
-### 5.7 WebAI3Presale
+### 6.7 WebAI3Presale
 
 ```bash
 PRESALE=$(forge create src/WebAI3Presale.sol:WebAI3Presale \
@@ -248,7 +291,7 @@ EOF_ADDR
 
 ---
 
-## 6) One-Time Wiring
+## 7) One-Time Wiring
 
 ```bash
 cast send "$LIQUIDITY_VAULT" "setPresaleVault(address)" "$PRESALE_VAULT" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
@@ -262,7 +305,7 @@ cast send "$CLAIM_MODULE" "setPresale(address)" "$PRESALE" --rpc-url "$SEPOLIA_R
 
 ---
 
-## 7) Grant Sepolia Operational Roles
+## 8) Grant Sepolia Operational Roles
 
 Read role IDs from chain:
 
@@ -286,7 +329,7 @@ cast send "$MARKETING_VAULT" "grantRole(bytes32,address)" "$MARKETING_ROLE" "$MA
 
 ---
 
-## 8) Fund ClaimModule with Presale AIC
+## 9) Fund ClaimModule with Presale AIC
 
 Required amount:
 
@@ -308,9 +351,9 @@ cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$CLAIM_MODULE" --rpc-url "
 
 ---
 
-## 9) Sepolia Post-Deploy Verification
+## 10) Sepolia Post-Deploy Verification
 
-### 9.1 Chain + wiring assertions
+### 10.1 Chain + wiring assertions
 
 ```bash
 cast chain-id --rpc-url "$SEPOLIA_RPC_URL"  # must be 11155111
@@ -323,7 +366,7 @@ cast call "$PRESALE_VAULT" "presale()(address)" --rpc-url "$SEPOLIA_RPC_URL"
 cast call "$CLAIM_MODULE" "presale()(address)" --rpc-url "$SEPOLIA_RPC_URL"
 ```
 
-### 9.2 Presale constants and state
+### 10.2 Presale constants and state
 
 ```bash
 cast call "$PRESALE" "HARD_CAP()(uint256)" --rpc-url "$SEPOLIA_RPC_URL"
@@ -334,7 +377,7 @@ cast call "$PRESALE" "getPhaseInfo(uint8)(uint256,uint256,uint256,uint256,uint25
 cast call "$PRESALE" "getPhaseInfo(uint8)(uint256,uint256,uint256,uint256,uint256)" 6 --rpc-url "$SEPOLIA_RPC_URL"
 ```
 
-### 9.3 Liquidity/claim gates
+### 10.3 Liquidity/claim gates
 
 ```bash
 cast call "$PRESALE_VAULT" "liquidityProvisioned()(bool)" --rpc-url "$SEPOLIA_RPC_URL"
@@ -348,11 +391,11 @@ Expected before launch actions:
 
 ---
 
-## 10) Sepolia Smoke Test (Recommended)
+## 11) Sepolia Smoke Test (Recommended)
 
 Use one test wallet with Sepolia USDC.
 
-### 10.1 Buy flow
+### 11.1 Buy flow
 
 ```bash
 BUYER=0xBUYER_ADDRESS
@@ -377,9 +420,9 @@ cast call "$MARKETING_VAULT" "totalDeposited()(uint256)" --rpc-url "$SEPOLIA_RPC
 
 ---
 
-## 11) Sepolia Go-Live Operations
+## 12) Sepolia Go-Live Operations
 
-### 11.1 Pause controls
+### 12.1 Pause controls
 
 ```bash
 cast send "$PRESALE" "pause()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
@@ -387,13 +430,13 @@ cast send "$PRESALE" "unpause()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PR
 cast send "$PRESALE" "forceUnpause()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 ```
 
-### 11.2 Permissionless finalization
+### 12.2 Permissionless finalization
 
 ```bash
 cast send "$PRESALE" "finalizePresale()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 ```
 
-### 11.3 Liquidity provisioning
+### 12.3 Liquidity provisioning
 
 Primary path:
 
@@ -407,7 +450,7 @@ Fallback path (after `MAX_LIQUIDITY_DELAY`):
 cast send "$LIQUIDITY_VAULT" "provideLiquidityFallback()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 ```
 
-### 11.4 Enable claims and user claim
+### 12.4 Enable claims and user claim
 
 ```bash
 cast send "$CLAIM_MODULE" "enableClaims()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
@@ -418,7 +461,7 @@ cast send "$CLAIM_MODULE" "claim()" --rpc-url "$SEPOLIA_RPC_URL" --private-key "
 
 ---
 
-## 12) Optional Sepolia Etherscan Verification
+## 13) Optional Sepolia Etherscan Verification
 
 If you did not use `forge create --verify`, verify manually:
 
@@ -433,7 +476,7 @@ You can repeat for each deployed contract with correct constructor args.
 
 ---
 
-## 13) Common Sepolia Failures
+## 14) Common Sepolia Failures
 
 - `PresaleNotFinalizable`: attempted finalize before hard cap/end timestamp.
 - `PhaseCapExceeded` / `HardCapExceeded`: buy too large; no partial fills.
@@ -444,7 +487,7 @@ You can repeat for each deployed contract with correct constructor args.
 
 ---
 
-## 14) Security Notes (Testnet and Mainnet)
+## 15) Security Notes (Testnet and Mainnet)
 
 - Keep deployer and operator keys in secure signing infrastructure.
 - Do not reuse testnet EOAs as mainnet privileged EOAs.
