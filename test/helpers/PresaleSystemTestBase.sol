@@ -3,7 +3,6 @@ pragma solidity 0.8.24;
 
 import { Test } from "forge-std/Test.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import { WebAI3Presale } from "../../src/WebAI3Presale.sol";
 import { PresaleVault } from "../../src/presale/PresaleVault.sol";
@@ -12,7 +11,6 @@ import { DevRunwayVault } from "../../src/presale/DevRunwayVault.sol";
 import { TeamStreamVault } from "../../src/presale/TeamStreamVault.sol";
 import { MarketingVault } from "../../src/presale/MarketingVault.sol";
 import { ClaimModule } from "../../src/presale/ClaimModule.sol";
-import { ILiquidityExecutor } from "../../src/presale/interfaces/ILiquidityExecutor.sol";
 
 contract MockUSDC6 is ERC20 {
     constructor() ERC20("USD Coin", "USDC") { }
@@ -34,20 +32,9 @@ contract MockAIC is ERC20 {
     }
 }
 
-contract MockLiquidityExecutor is ILiquidityExecutor {
-    function executeLiquidityProvision(address usdc, uint256 usdcAmount, bytes32)
-        external
-        returns (uint256 lpTokensMinted)
-    {
-        IERC20(usdc).transferFrom(msg.sender, address(this), usdcAmount);
-        return usdcAmount;
-    }
-}
-
 abstract contract PresaleSystemTestBase is Test {
     MockUSDC6 internal usdc;
     MockAIC internal aic;
-    MockLiquidityExecutor internal liquidityExecutor;
 
     WebAI3Presale internal presale;
     PresaleVault internal presaleVault;
@@ -67,6 +54,7 @@ abstract contract PresaleSystemTestBase is Test {
     address internal devBeneficiary = makeAddr("devBeneficiary");
     address internal teamBeneficiary = makeAddr("teamBeneficiary");
     address internal marketingBeneficiary = makeAddr("marketingBeneficiary");
+    address internal liquidityRecipient = makeAddr("liquidityRecipient");
 
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
@@ -77,8 +65,6 @@ abstract contract PresaleSystemTestBase is Test {
     uint64 internal presaleEnd;
     uint64 internal tge;
 
-    bytes32 internal constant PLAN_HASH = keccak256("WEBAI3_LIQUIDITY_PLAN_V1");
-
     function setUp() public virtual {
         presaleStart = uint64(block.timestamp);
         presaleEnd = presaleStart + 120 days;
@@ -86,10 +72,8 @@ abstract contract PresaleSystemTestBase is Test {
 
         usdc = new MockUSDC6();
         aic = new MockAIC();
-        liquidityExecutor = new MockLiquidityExecutor();
 
-        liquidityVault =
-            new LiquidityVault(admin, address(usdc), address(liquidityExecutor), PLAN_HASH);
+        liquidityVault = new LiquidityVault(admin, address(usdc), liquidityRecipient);
         devRunwayVault = new DevRunwayVault(admin, address(usdc), devBeneficiary, presaleStart);
         teamStreamVault =
             new TeamStreamVault(admin, address(usdc), teamBeneficiary, presaleStart, 365 days);
@@ -124,7 +108,7 @@ abstract contract PresaleSystemTestBase is Test {
         claimModule.setPresale(address(presale));
 
         presale.grantRole(presale.PAUSER_ROLE(), pauser);
-        liquidityVault.grantRole(liquidityVault.LIQUIDITY_EXECUTOR_ROLE(), liquidityOperator);
+        liquidityVault.grantRole(liquidityVault.LIQUIDITY_OPERATOR_ROLE(), liquidityOperator);
         devRunwayVault.grantRole(devRunwayVault.DEV_OPERATOR_ROLE(), devOperator);
         teamStreamVault.grantRole(teamStreamVault.TEAM_OPERATOR_ROLE(), teamOperator);
         marketingVault.grantRole(marketingVault.MARKETING_OPERATOR_ROLE(), marketingOperator);

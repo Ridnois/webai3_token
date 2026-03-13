@@ -7,22 +7,22 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "./PresaleErrors.sol";
-import { ILiquidityExecutor } from "./interfaces/ILiquidityExecutor.sol";
 import { ILiquidityVault } from "./interfaces/ILiquidityVault.sol";
 
 /// @title LiquidityVault
 /// @notice Holds liquidity funds and enforces primary + fallback provisioning paths.
-/// @dev Deployment assumption: `setPresaleVault` is called once by admin after PresaleVault deployment.
+/// @dev On provisioning, USDC is transferred to an immutable `liquidityRecipient` who handles
+///      DEX liquidity off-chain. Deployment assumption: `setPresaleVault` is called once by admin
+///      after PresaleVault deployment.
 contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
     using SafeERC20 for IERC20;
 
-    bytes32 public constant LIQUIDITY_EXECUTOR_ROLE = keccak256("LIQUIDITY_EXECUTOR_ROLE");
+    bytes32 public constant LIQUIDITY_OPERATOR_ROLE = keccak256("LIQUIDITY_OPERATOR_ROLE");
 
     uint256 public constant MAX_LIQUIDITY_DELAY = 7 days;
 
     IERC20 public immutable usdc;
-    ILiquidityExecutor public immutable liquidityExecutor;
-    bytes32 public immutable LIQUIDITY_PLAN_HASH;
+    address public immutable liquidityRecipient;
 
     address public presaleVault;
 
@@ -33,13 +33,12 @@ contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
 
     uint256 public totalDeposited;
     uint256 public totalProvisionedUSDC;
-    uint256 public lastLpTokensMinted;
 
     event PresaleVaultSet(address indexed vault);
     event LiquidityDeposited(uint256 amount, uint256 totalDeposited);
     event LiquidityFinalizationRegistered(uint64 finalizedAt);
     event LiquidityProvisionedEvent(
-        address indexed caller, uint256 usdcAmount, uint256 lpTokensMinted, bool viaFallback
+        address indexed caller, uint256 usdcAmount, bool viaFallback
     );
 
     modifier onlyPresaleVault() {
@@ -47,21 +46,15 @@ contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
         _;
     }
 
-    constructor(
-        address admin,
-        address usdc_,
-        address liquidityExecutor_,
-        bytes32 liquidityPlanHash_
-    ) {
-        if (admin == address(0) || usdc_ == address(0) || liquidityExecutor_ == address(0)) {
+    constructor(address admin, address usdc_, address liquidityRecipient_) {
+        if (admin == address(0) || usdc_ == address(0) || liquidityRecipient_ == address(0)) {
             revert InvalidAddress();
         }
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
 
         usdc = IERC20(usdc_);
-        liquidityExecutor = ILiquidityExecutor(liquidityExecutor_);
-        LIQUIDITY_PLAN_HASH = liquidityPlanHash_;
+        liquidityRecipient = liquidityRecipient_;
     }
 
     /// @notice One-time PresaleVault binding.
@@ -91,8 +84,8 @@ contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
         emit LiquidityFinalizationRegistered(finalizedAt_);
     }
 
-    /// @notice Primary liquidity path callable by assigned role during the executor window.
-    function provideLiquidity() external onlyRole(LIQUIDITY_EXECUTOR_ROLE) nonReentrant {
+    /// @notice Primary liquidity path callable by assigned role during the operator window.
+    function provideLiquidity() external onlyRole(LIQUIDITY_OPERATOR_ROLE) nonReentrant {
         if (!presaleFinalized) revert PresaleNotFinalized();
         if (liquidityProvisioned) revert LiquidityAlreadyProvisioned();
         if (block.timestamp > finalizedAt + MAX_LIQUIDITY_DELAY) revert LiquidityWindowExpired();
@@ -100,7 +93,7 @@ contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
         _executeProvision(false);
     }
 
-    /// @notice Permissionless fallback liquidity path after the executor window expires.
+    /// @notice Permissionless fallback liquidity path after the operator window expires.
     function provideLiquidityFallback() external nonReentrant {
         if (!presaleFinalized) revert PresaleNotFinalized();
         if (liquidityProvisioned) revert LiquidityAlreadyProvisioned();
@@ -121,22 +114,11 @@ contract LiquidityVault is AccessControl, ReentrancyGuard, ILiquidityVault {
         uint256 usdcAmount = usdc.balanceOf(address(this));
         if (usdcAmount == 0) revert LiquidityExecutionFailed();
 
-        // Executes against a pre-committed plan hash to avoid caller-controlled economics.
-        usdc.forceApprove(address(liquidityExecutor), 0);
-        usdc.forceApprove(address(liquidityExecutor), usdcAmount);
-
-        uint256 lpTokensMinted = liquidityExecutor.executeLiquidityProvision(
-            address(usdc), usdcAmount, LIQUIDITY_PLAN_HASH
-        );
-
-        usdc.forceApprove(address(liquidityExecutor), 0);
-
-        if (lpTokensMinted == 0) revert LiquidityExecutionFailed();
+        usdc.safeTransfer(liquidityRecipient, usdcAmount);
 
         liquidityProvisioned = true;
         totalProvisionedUSDC += usdcAmount;
-        lastLpTokensMinted = lpTokensMinted;
 
-        emit LiquidityProvisionedEvent(msg.sender, usdcAmount, lpTokensMinted, viaFallback);
+        emit LiquidityProvisionedEvent(msg.sender, usdcAmount, viaFallback);
     }
 }

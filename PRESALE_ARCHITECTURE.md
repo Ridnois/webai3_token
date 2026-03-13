@@ -25,7 +25,7 @@ This revision preserves the approved architecture and closes the last production
 1. **Liquidity liveness hardening**
 - Introduces `MAX_LIQUIDITY_DELAY = 7 days`.
 - Adds permissionless fallback liquidity provisioning after deadline.
-- Prevents indefinite claim lock if the liquidity executor fails.
+- Prevents indefinite claim lock if the liquidity operator fails to act.
 
 2. **MarketingVault trust hardening**
 - Applies explicit launch policy: **MarketingVault is fully locked until `presaleFinalized == true`**.
@@ -65,11 +65,11 @@ AIC Claim Module
   `-> claimsEnabled only after liquidityProvisioned == true
 ```
 
-### Liquidity Execution Paths
+### Liquidity Provisioning Paths
 
 ```text
 Path A (Primary):
-  LIQUIDITY_EXECUTOR_ROLE -> provideLiquidity()
+  LIQUIDITY_OPERATOR_ROLE -> provideLiquidity()
   Allowed only until finalizedAt + MAX_LIQUIDITY_DELAY
 
 Path B (Fallback):
@@ -77,7 +77,7 @@ Path B (Fallback):
   Allowed only after finalizedAt + MAX_LIQUIDITY_DELAY
 ```
 
-Both paths call the same internal liquidity provisioning logic and can execute only once.
+Both paths transfer USDC to the immutable `liquidityRecipient` address and can execute only once.
 
 ---
 
@@ -124,7 +124,7 @@ This combination reduces immediate sell pressure and improves launch resilience.
 
 `provideLiquidity()` requirements:
 
-- caller has `LIQUIDITY_EXECUTOR_ROLE`
+- caller has `LIQUIDITY_OPERATOR_ROLE`
 - `presaleFinalized == true`
 - `liquidityProvisioned == false`
 - `block.timestamp <= finalizedAt + MAX_LIQUIDITY_DELAY`
@@ -137,14 +137,13 @@ This combination reduces immediate sell pressure and improves launch resilience.
 - `liquidityProvisioned == false`
 - `block.timestamp > finalizedAt + MAX_LIQUIDITY_DELAY`
 
-This guarantees liveness if the executor is unavailable.
+This guarantees liveness if the operator is unavailable.
 
 #### Shared execution safeguards (both paths)
 
-- immutable DEX router/factory targets
-- immutable liquidity plan hash (`LIQUIDITY_PLAN_HASH`)
-- minimum LP output / slippage guard
-- emits `LiquidityProvisioned(...)`
+- immutable `liquidityRecipient` address set at construction
+- USDC transferred via `SafeERC20.safeTransfer`
+- emits `LiquidityProvisionedEvent(...)`
 - sets `liquidityProvisioned = true` on success
 
 ### 2) DevRunwayVault Policy (Dual-Gated Unlock)
@@ -314,7 +313,7 @@ LiquidityProvisioned
 ### Role Set (Minimal and Clear)
 
 - `PAUSER_ROLE`: pause/unpause buys, within bounded limits.
-- `LIQUIDITY_EXECUTOR_ROLE`: primary liquidity path before fallback deadline.
+- `LIQUIDITY_OPERATOR_ROLE`: primary liquidity path before fallback deadline.
 - `VAULT_MULTISIG_ROLE`: dev/team/marketing vault withdrawals per policy.
 - `DEFAULT_ADMIN_ROLE`: role management only; no finalize/claim/liquidity bypass.
 
@@ -327,7 +326,7 @@ LiquidityProvisioned
 
 ### Critical Non-Bypass Rules
 
-- No privileged route to set `liquidityProvisioned` without real LP execution checks.
+- No privileged route to set `liquidityProvisioned` without real USDC transfer.
 - No route to enable claims before liquidity provisioning.
 - No route to spend MarketingVault pre-finalization.
 - No owner/admin early-close path.
@@ -399,7 +398,7 @@ LiquidityProvisioned
 - `HARD_CAP`
 - `PRESALE_END_TIMESTAMP`
 - `MAX_LIQUIDITY_DELAY`
-- DEX route config / liquidity plan hash
+- `liquidityRecipient` address
 2. Configure roles and multisig signers.
 3. Publish public policy and parameter commitments.
 
@@ -413,14 +412,14 @@ LiquidityProvisioned
 ### Finalization and Launch
 
 1. Anyone calls `finalizePresale()` once eligible.
-2. Primary liquidity executor attempts provisioning.
-3. If deadline passes without provisioning, any actor executes fallback liquidity path.
+2. Liquidity operator triggers provisioning (USDC transferred to `liquidityRecipient`).
+3. If deadline passes without provisioning, any actor triggers fallback liquidity path.
 4. Enable claims only after `liquidityProvisioned == true`.
 5. Begin claim schedule per vesting policy.
 
 ### Incident Handling
 
-- If executor is unavailable, trigger fallback after deadline.
+- If operator is unavailable, trigger fallback after deadline.
 - Never bypass ordering invariants to restore UX.
 - Publish incident and remediation timeline.
 

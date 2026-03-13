@@ -8,7 +8,7 @@
 6. Call `setPresale(webAI3Presale)` on `PresaleVault` and `ClaimModule`.
 7. Grant operational roles:
    - `PAUSER_ROLE` on `WebAI3Presale`
-   - `LIQUIDITY_EXECUTOR_ROLE` on `LiquidityVault`
+   - `LIQUIDITY_OPERATOR_ROLE` on `LiquidityVault`
    - `DEV_OPERATOR_ROLE` on `DevRunwayVault`
    - `TEAM_OPERATOR_ROLE` on `TeamStreamVault`
    - `MARKETING_OPERATOR_ROLE` on `MarketingVault`

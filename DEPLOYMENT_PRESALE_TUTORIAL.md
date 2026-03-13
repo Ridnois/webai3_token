@@ -62,8 +62,8 @@ DEV_BENEFICIARY=0xDEV_BENEFICIARY_ADDRESS
 TEAM_BENEFICIARY=0xTEAM_BENEFICIARY_ADDRESS
 MARKETING_BENEFICIARY=0xMARKETING_BENEFICIARY_ADDRESS
 
-# Liquidity adapter implementing ILiquidityExecutor
-LIQUIDITY_EXECUTOR=0xLIQUIDITY_EXECUTOR_ADDRESS
+# Address that receives USDC when liquidity is provisioned
+LIQUIDITY_RECIPIENT=0xLIQUIDITY_RECIPIENT_ADDRESS
 EOF_ENV
 ```
 
@@ -165,10 +165,6 @@ TGE=$((PRESALE_END + 24*60*60))                 # +1 day after presale end
 
 TEAM_STREAM_DURATION=$((365*24*60*60))          # 365 days
 MARKETING_WITHDRAW_DELAY=$((2*24*60*60))        # 2 days
-
-# Commit liquidity strategy hash used by LiquidityVault
-LIQUIDITY_PLAN_HASH=$(cast keccak "WEBAI3_LIQUIDITY_PLAN_V1_SEPOLIA")
-echo "$LIQUIDITY_PLAN_HASH"
 ```
 
 ---
@@ -185,7 +181,7 @@ LIQUIDITY_VAULT=$(forge create src/presale/LiquidityVault.sol:LiquidityVault \
   --rpc-url "$SEPOLIA_RPC_URL" \
   --private-key "$PRIVATE_KEY" \
   --broadcast --json \
-  --constructor-args "$DEPLOYER" "$USDC" "$LIQUIDITY_EXECUTOR" "$LIQUIDITY_PLAN_HASH" \
+  --constructor-args "$DEPLOYER" "$USDC" "$LIQUIDITY_RECIPIENT" \
   | jq -r '.deployedTo')
 
 echo "LIQUIDITY_VAULT=$LIQUIDITY_VAULT"
@@ -311,7 +307,7 @@ Read role IDs from chain:
 
 ```bash
 PAUSER_ROLE=$(cast call "$PRESALE" "PAUSER_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
-LIQ_EXEC_ROLE=$(cast call "$LIQUIDITY_VAULT" "LIQUIDITY_EXECUTOR_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
+LIQ_OP_ROLE=$(cast call "$LIQUIDITY_VAULT" "LIQUIDITY_OPERATOR_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
 DEV_ROLE=$(cast call "$DEV_VAULT" "DEV_OPERATOR_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
 TEAM_ROLE=$(cast call "$TEAM_VAULT" "TEAM_OPERATOR_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
 MARKETING_ROLE=$(cast call "$MARKETING_VAULT" "MARKETING_OPERATOR_ROLE()(bytes32)" --rpc-url "$SEPOLIA_RPC_URL")
@@ -321,7 +317,7 @@ Grant roles:
 
 ```bash
 cast send "$PRESALE" "grantRole(bytes32,address)" "$PAUSER_ROLE" "$PAUSER" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
-cast send "$LIQUIDITY_VAULT" "grantRole(bytes32,address)" "$LIQ_EXEC_ROLE" "$LIQUIDITY_OPERATOR" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
+cast send "$LIQUIDITY_VAULT" "grantRole(bytes32,address)" "$LIQ_OP_ROLE" "$LIQUIDITY_OPERATOR" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 cast send "$DEV_VAULT" "grantRole(bytes32,address)" "$DEV_ROLE" "$DEV_OPERATOR" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 cast send "$TEAM_VAULT" "grantRole(bytes32,address)" "$TEAM_ROLE" "$TEAM_OPERATOR" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
 cast send "$MARKETING_VAULT" "grantRole(bytes32,address)" "$MARKETING_ROLE" "$MARKETING_OPERATOR" --rpc-url "$SEPOLIA_RPC_URL" --private-key "$PRIVATE_KEY"
@@ -492,5 +488,5 @@ You can repeat for each deployed contract with correct constructor args.
 - Keep deployer and operator keys in secure signing infrastructure.
 - Do not reuse testnet EOAs as mainnet privileged EOAs.
 - Lock down role grants after deployment (multisig preferred).
-- Treat `LIQUIDITY_EXECUTOR` and `LIQUIDITY_PLAN_HASH` as critical trust anchors.
+- Treat `LIQUIDITY_RECIPIENT` as a critical trust anchor — all liquidity USDC is sent there.
 - Perform at least one full end-to-end Sepolia rehearsal before mainnet.
