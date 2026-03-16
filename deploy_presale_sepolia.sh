@@ -193,43 +193,55 @@ section "Funding ClaimModule with 500M AIC"
 
 PRESALE_AIC_AMOUNT=500000000000000000000000000
 
-# cast appends "[Xe26]" annotations — strip to raw integer for comparison
-strip_cast() { echo "$1" | sed 's/ \[.*\]//'; }
+# cast appends " [5e26]"-style annotations on uint256 — strip with awk
+# Usage: cast_uint <contract> <sig> [args...]
+cast_uint() { local c="$1" s="$2"; shift 2; cast call "$c" "$s" "$@" --rpc-url "$SEPOLIA_RPC_URL" | awk '{print $1}'; }
+# cast returns EIP-55 checksummed addresses; normalise to lowercase for comparison
+cast_addr() { local c="$1" s="$2"; shift 2; cast call "$c" "$s" "$@" --rpc-url "$SEPOLIA_RPC_URL" | tr '[:upper:]' '[:lower:]'; }
+lc() { echo "$1" | tr '[:upper:]' '[:lower:]'; }
 
-AIC_BALANCE_RAW=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$DEPLOYER" --rpc-url "$SEPOLIA_RPC_URL")
-AIC_BALANCE=$(strip_cast "$AIC_BALANCE_RAW")
+AIC_BALANCE=$(cast_uint "$AIC_TOKEN" "balanceOf(address)(uint256)" "$DEPLOYER")
 info "Deployer AIC balance: $AIC_BALANCE"
 
-# Use python for big-int comparison (bash integers overflow at 64-bit)
-python3 -c "
+# python3 for big-int comparison (bash integers cap at 64-bit)
+python3 - <<PYEOF
 import sys
-bal = int('$AIC_BALANCE')
+bal  = int("$AIC_BALANCE")
 need = $PRESALE_AIC_AMOUNT
 if bal < need:
-    print(f'Insufficient AIC: have {bal}, need {need}', file=sys.stderr)
+    print(f"Insufficient AIC: have {bal}, need {need}", file=sys.stderr)
     sys.exit(1)
-"
+PYEOF
 
 send "Transfer 500M AIC to ClaimModule" \
   "$AIC_TOKEN" "transfer(address,uint256)" "$CLAIM_MODULE" "$PRESALE_AIC_AMOUNT"
 
-CLAIM_AIC_RAW=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$CLAIM_MODULE" --rpc-url "$SEPOLIA_RPC_URL")
-CLAIM_AIC=$(strip_cast "$CLAIM_AIC_RAW")
+CLAIM_AIC=$(cast_uint "$AIC_TOKEN" "balanceOf(address)(uint256)" "$CLAIM_MODULE")
 
-python3 -c "
+python3 - <<PYEOF
 import sys
-got = int('$CLAIM_AIC')
+got  = int("$CLAIM_AIC")
 want = $PRESALE_AIC_AMOUNT
 if got != want:
-    print(f'ClaimModule AIC balance mismatch: got {got}, want {want}', file=sys.stderr)
+    print(f"ClaimModule AIC balance mismatch: got {got}, want {want}", file=sys.stderr)
     sys.exit(1)
-"
+PYEOF
 info "ClaimModule funded: $CLAIM_AIC AIC ✓"
 
 # ─── 11) Post-deploy verification ────────────────────────────────────────────
 section "Post-deploy verification"
 
-check_eq() {
+# Addresses compared lowercase; booleans compared as-is (cast returns "true"/"false")
+check_addr() {
+  local label="$1" got="$2" want="$3"
+  if [[ "$(lc "$got")" == "$(lc "$want")" ]]; then
+    info "$label ✓"
+  else
+    warn "$label MISMATCH: got '$got', expected '$want'"
+  fi
+}
+
+check_bool() {
   local label="$1" got="$2" want="$3"
   if [[ "$got" == "$want" ]]; then
     info "$label: $got ✓"
@@ -238,42 +250,34 @@ check_eq() {
   fi
 }
 
-check_eq "Chain ID" "$(cast chain-id --rpc-url "$SEPOLIA_RPC_URL")" "11155111"
+check_addr "Chain ID" "$(cast chain-id --rpc-url "$SEPOLIA_RPC_URL")" "11155111"
 
-check_eq "LiquidityVault.presaleVault" \
-  "$(cast call "$LIQUIDITY_VAULT" "presaleVault()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE_VAULT"
+check_addr "LiquidityVault.presaleVault" \
+  "$(cast_addr "$LIQUIDITY_VAULT" "presaleVault()(address)")" "$PRESALE_VAULT"
 
-check_eq "DevRunwayVault.presaleVault" \
-  "$(cast call "$DEV_VAULT" "presaleVault()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE_VAULT"
+check_addr "DevRunwayVault.presaleVault" \
+  "$(cast_addr "$DEV_VAULT" "presaleVault()(address)")" "$PRESALE_VAULT"
 
-check_eq "TeamStreamVault.presaleVault" \
-  "$(cast call "$TEAM_VAULT" "presaleVault()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE_VAULT"
+check_addr "TeamStreamVault.presaleVault" \
+  "$(cast_addr "$TEAM_VAULT" "presaleVault()(address)")" "$PRESALE_VAULT"
 
-check_eq "MarketingVault.presaleVault" \
-  "$(cast call "$MARKETING_VAULT" "presaleVault()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE_VAULT"
+check_addr "MarketingVault.presaleVault" \
+  "$(cast_addr "$MARKETING_VAULT" "presaleVault()(address)")" "$PRESALE_VAULT"
 
-check_eq "PresaleVault.presale" \
-  "$(cast call "$PRESALE_VAULT" "presale()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE"
+check_addr "PresaleVault.presale" \
+  "$(cast_addr "$PRESALE_VAULT" "presale()(address)")" "$PRESALE"
 
-check_eq "ClaimModule.presale" \
-  "$(cast call "$CLAIM_MODULE" "presale()(address)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "$PRESALE"
+check_addr "ClaimModule.presale" \
+  "$(cast_addr "$CLAIM_MODULE" "presale()(address)")" "$PRESALE"
 
-check_eq "liquidityProvisioned" \
-  "$(cast call "$PRESALE_VAULT" "liquidityProvisioned()(bool)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "false"
+check_bool "liquidityProvisioned" \
+  "$(cast call "$PRESALE_VAULT" "liquidityProvisioned()(bool)" --rpc-url "$SEPOLIA_RPC_URL")" "false"
 
-check_eq "claimsEnabled" \
-  "$(cast call "$CLAIM_MODULE" "claimsEnabled()(bool)" --rpc-url "$SEPOLIA_RPC_URL")" \
-  "false"
+check_bool "claimsEnabled" \
+  "$(cast call "$CLAIM_MODULE" "claimsEnabled()(bool)" --rpc-url "$SEPOLIA_RPC_URL")" "false"
 
-info "HARD_CAP:    $(cast call "$PRESALE" "HARD_CAP()(uint256)" --rpc-url "$SEPOLIA_RPC_URL")"
-info "lifecycle:   $(cast call "$PRESALE" "lifecycle()(uint8)" --rpc-url "$SEPOLIA_RPC_URL")"
+info "HARD_CAP:  $(cast_uint "$PRESALE" "HARD_CAP()(uint256)")"
+info "lifecycle: $(cast call "$PRESALE" "lifecycle()(uint8)" --rpc-url "$SEPOLIA_RPC_URL")"
 
 # ─── Done ────────────────────────────────────────────────────────────────────
 section "Deployment complete"
