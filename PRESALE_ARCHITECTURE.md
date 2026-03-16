@@ -1,8 +1,8 @@
-# WebAI3 Token Presale Architecture (Revised) v2.2
+# WebAI3 Token Presale Architecture (Revised) v2.3
 
-**Status:** Production-Grade Technical Baseline  
-**Audience:** Smart Contract Engineers, Protocol Security Reviewers, External Auditors  
-**Last Updated:** March 11, 2026
+**Status:** Production-Grade Technical Baseline
+**Audience:** Smart Contract Engineers, Protocol Security Reviewers, External Auditors
+**Last Updated:** March 16, 2026
 
 ---
 
@@ -15,10 +15,24 @@ This revision preserves the approved architecture and closes the last production
 - Vault-first routing for all presale funds
 - Permissionless finalization
 - Liquidity-before-claims ordering
-- Dual-gated dev unlock model
+- Stream-gated dev unlock (immediate from day one)
 - Bounded pause mechanism
 - Mandatory presale vesting
 - 7-phase fund-driven presale structure
+
+### Changes in v2.3
+
+**DevRunwayVault: milestone gate removed**
+
+The previous design dual-gated dev withdrawals on both milestone progression (minimum $500k raised) and a linear time stream. This created a critical operational problem: the dev team had $0 available from deployment until the presale crossed $500k, yet the product must be actively developed and improved throughout the presale to achieve that target.
+
+This is a chicken-and-egg dependency that could stall the project. The milestone gate has been removed. The vault now uses stream-only gating:
+
+```text
+withdrawableDev = min(streamedDevAmount(now), totalDeposited) - totalWithdrawn
+```
+
+Dev funds unlock linearly from `presaleStartTimestamp` over 180 days, capped by what has actually been deposited. The team can access operational funds from day one while the linear release still prevents bulk extraction.
 
 ### Final Hardening Added in v2.2
 
@@ -56,7 +70,7 @@ PresaleContract (phase pricing, accounting, finalization eligibility)
   v
 PresaleVault (hard split on each buy)
   |- LiquidityVault   [70%]  -> LP provisioning only
-  |- DevRunwayVault   [15%]  -> min(milestone, stream, deposited)
+  |- DevRunwayVault   [15%]  -> min(stream, deposited) from day one
   |- TeamStreamVault  [10%]  -> linear streaming only
   `- MarketingVault   [5%]   -> locked pre-finalization, then timelock+multisig
 
@@ -146,37 +160,37 @@ This guarantees liveness if the operator is unavailable.
 - emits `LiquidityProvisionedEvent(...)`
 - sets `liquidityProvisioned = true` on success
 
-### 2) DevRunwayVault Policy (Dual-Gated Unlock)
+### 2) DevRunwayVault Policy (Stream-Only, Day-One Access)
 
-Dev withdrawals require both milestone and stream maturity:
+Dev withdrawals are gated by time stream only. No milestone gate.
+
+**Rationale:** The team must be able to fund R&D from the moment the presale launches. A milestone gate that blocks all dev funding until $500k is raised creates a chicken-and-egg dependency: the product must be actively developed to attract buyers, but development requires funding. Removing the milestone gate resolves this without compromising investor protection — the linear stream still prevents bulk extraction.
 
 ```text
 withdrawableDev = max(
   0,
-  min(milestoneUnlocked(totalRaisedUSDC), streamedDevAmount(now), devDeposited)
-  - devWithdrawn
+  min(streamedDevAmount(now), devDeposited) - devWithdrawn
 )
 ```
 
 #### Stream Model
 
 ```text
-DEV_MAX_BUDGET = HARD_CAP * 15% = 1,050,000 USDC
+DEV_MAX_BUDGET    = HARD_CAP * 15% = 1,050,000 USDC
 DEV_STREAM_DURATION = 180 days
-streamedDevAmount(now) = DEV_MAX_BUDGET * min((now - presaleStartTimestamp)/180 days, 1)
+Rate              ≈ $5,833 USDC / day
+
+streamedDevAmount(now) = DEV_MAX_BUDGET * min((now - presaleStartTimestamp) / 180 days, 1)
 ```
 
-#### Milestone Cap Table
+The stream begins at `presaleStartTimestamp`. On day 1, `~$5,833` is immediately withdrawable (subject to `totalDeposited`). By day 180, the full $1,050,000 is streamed. Withdrawals are further capped by `totalDeposited` — the team can only access funds that have actually been routed to the vault from sales.
 
-| Cumulative Raised | Max Milestone-Unlocked Dev |
-|---|---:|
-| $500k | $50k |
-| $1M | $120k |
-| $2M | $250k |
-| $3.5M | $420k |
-| $5M | $650k |
-| $6M | $850k |
-| $7M | $1,050k |
+#### Investor Protections Retained
+
+- Funds are only available once deposited via real sales (no pre-allocation).
+- Linear release: the full vault cannot be drained in a single transaction.
+- `DEV_OPERATOR_ROLE` required for all withdrawals.
+- `beneficiary` is immutable at construction; funds always go to one address.
 
 ### 3) TeamStreamVault Policy
 
@@ -368,11 +382,14 @@ LiquidityProvisioned
 - marketing withdrawal succeeds post-finalization only with timelock + multisig
 - admin/owner cannot bypass pre-finalization lock
 
-### 5) Dev Dual-Gate Tests
+### 5) Dev Stream Tests
 
-- milestone reached but stream lagging: stream cap binds
-- stream matured but milestone unmet: milestone cap binds
-- fast raise cannot drain full dev allocation immediately
+- day 0: withdrawableDev == 0 (stream not started)
+- day 1: withdrawableDev ≈ 5,833 USDC (stream rate)
+- day 90: withdrawableDev ≈ 525,000 USDC (50% through stream)
+- day 180+: withdrawableDev == totalDeposited (stream fully matured)
+- withdrawableDev never exceeds totalDeposited regardless of stream progress
+- partial withdrawals correctly update totalWithdrawn and reduce next available amount
 
 ### 6) Pause Abuse and Liveness Tests
 
@@ -446,7 +463,7 @@ LiquidityProvisioned
 3. `claimsEnabled => presaleFinalized && liquidityProvisioned`.
 4. If `!liquidityProvisioned` and `now > finalizedAt + MAX_LIQUIDITY_DELAY`, fallback liquidity path is callable by anyone.
 5. MarketingVault withdrawals are impossible while `presaleFinalized == false`.
-6. Dev withdrawals satisfy: `devWithdrawn <= min(milestoneUnlocked, streamedDevAmount, devDeposited)`.
+6. Dev withdrawals satisfy: `devWithdrawn <= min(streamedDevAmount, devDeposited)`.
 7. `sum(phaseTokenCaps) == 500,000,000 AIC`.
 8. No privileged role can bypass invariants 2–6.
 

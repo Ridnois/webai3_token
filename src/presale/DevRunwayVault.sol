@@ -10,8 +10,11 @@ import "./PresaleErrors.sol";
 import { IDevRunwayVault } from "./interfaces/IDevRunwayVault.sol";
 
 /// @title DevRunwayVault
-/// @notice Development treasury with dual gating (milestones + linear stream).
-/// @dev Amounts are USDC 6-decimal units.
+/// @notice Development treasury with stream-only gating.
+/// @dev Funds unlock linearly from presaleStartTimestamp over DEV_STREAM_DURATION,
+///      capped by the amount actually deposited. No milestone gate — the team must
+///      be able to fund R&D from day one regardless of presale performance.
+///      Amounts are USDC 6-decimal units.
 contract DevRunwayVault is AccessControl, ReentrancyGuard, IDevRunwayVault {
     using SafeERC20 for IERC20;
 
@@ -28,12 +31,9 @@ contract DevRunwayVault is AccessControl, ReentrancyGuard, IDevRunwayVault {
 
     uint256 public totalDeposited;
     uint256 public totalWithdrawn;
-    uint256 public totalRaisedObserved;
-    uint256 public lastMilestoneUnlocked;
 
     event PresaleVaultSet(address indexed vault);
-    event DevDeposited(uint256 amount, uint256 totalDeposited, uint256 totalRaisedObserved);
-    event MilestoneUnlockUpdated(uint256 indexed totalRaised, uint256 milestoneUnlockedAmount);
+    event DevDeposited(uint256 amount, uint256 totalDeposited);
     event DevWithdrawn(address indexed caller, uint256 amount, address indexed beneficiary);
 
     modifier onlyPresaleVault() {
@@ -63,19 +63,11 @@ contract DevRunwayVault is AccessControl, ReentrancyGuard, IDevRunwayVault {
     }
 
     /// @inheritdoc IDevRunwayVault
-    function onDeposit(uint256 amount, uint256 totalRaisedAfter) external onlyPresaleVault {
+    function onDeposit(uint256 amount, uint256 /* totalRaisedAfter */) external onlyPresaleVault {
         if (amount == 0) revert ZeroAmount();
 
         totalDeposited += amount;
-        totalRaisedObserved = totalRaisedAfter;
-
-        uint256 unlocked = milestoneUnlocked(totalRaisedAfter);
-        if (unlocked != lastMilestoneUnlocked) {
-            lastMilestoneUnlocked = unlocked;
-            emit MilestoneUnlockUpdated(totalRaisedAfter, unlocked);
-        }
-
-        emit DevDeposited(amount, totalDeposited, totalRaisedAfter);
+        emit DevDeposited(amount, totalDeposited);
     }
 
     /// @notice Withdraw available dev runway to the configured beneficiary.
@@ -89,18 +81,6 @@ contract DevRunwayVault is AccessControl, ReentrancyGuard, IDevRunwayVault {
         usdc.safeTransfer(beneficiary, amount);
 
         emit DevWithdrawn(msg.sender, amount, beneficiary);
-    }
-
-    /// @notice Maximum unlocked amount from milestone progression.
-    function milestoneUnlocked(uint256 totalRaisedUSDC) public pure returns (uint256) {
-        if (totalRaisedUSDC >= 7_000_000e6) return 1_050_000e6;
-        if (totalRaisedUSDC >= 6_000_000e6) return 850_000e6;
-        if (totalRaisedUSDC >= 5_000_000e6) return 650_000e6;
-        if (totalRaisedUSDC >= 3_500_000e6) return 420_000e6;
-        if (totalRaisedUSDC >= 2_000_000e6) return 250_000e6;
-        if (totalRaisedUSDC >= 1_000_000e6) return 120_000e6;
-        if (totalRaisedUSDC >= 500_000e6) return 50_000e6;
-        return 0;
     }
 
     /// @notice Linearly streamed dev budget based on time since presale start.
@@ -117,15 +97,10 @@ contract DevRunwayVault is AccessControl, ReentrancyGuard, IDevRunwayVault {
         return (DEV_MAX_BUDGET * elapsed) / DEV_STREAM_DURATION;
     }
 
-    /// @notice Current withdrawable amount under dual-gated constraints.
+    /// @notice Current withdrawable amount: stream progress capped to deposited funds, minus already withdrawn.
     function withdrawableDev() public view returns (uint256) {
-        uint256 milestoneCap = milestoneUnlocked(totalRaisedObserved);
         uint256 streamCap = streamedDevAmount();
-
-        uint256 maxAllowed = milestoneCap < streamCap ? milestoneCap : streamCap;
-        if (maxAllowed > totalDeposited) {
-            maxAllowed = totalDeposited;
-        }
+        uint256 maxAllowed = streamCap < totalDeposited ? streamCap : totalDeposited;
 
         if (maxAllowed <= totalWithdrawn) {
             return 0;
