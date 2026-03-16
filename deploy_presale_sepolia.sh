@@ -85,7 +85,7 @@ deploy() {
   shift 2
   local args=("$@")
 
-  info "Deploying $label..."
+  info "Deploying $label..." >&2
   local addr
   addr=$(forge create "$src" \
     --chain sepolia \
@@ -93,10 +93,11 @@ deploy() {
     --private-key "$PRIVATE_KEY" \
     --broadcast --json \
     --constructor-args "${args[@]}" \
+    2>/dev/null \
     | jq -r '.deployedTo')
 
   [[ "$addr" == 0x* ]] || die "Deployment of $label failed — got: $addr"
-  info "$label deployed at $addr"
+  info "$label deployed at $addr" >&2
   echo "$addr"
 }
 
@@ -192,18 +193,37 @@ section "Funding ClaimModule with 500M AIC"
 
 PRESALE_AIC_AMOUNT=500000000000000000000000000
 
-AIC_BALANCE=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$DEPLOYER" --rpc-url "$SEPOLIA_RPC_URL")
+# cast appends "[Xe26]" annotations — strip to raw integer for comparison
+strip_cast() { echo "$1" | sed 's/ \[.*\]//'; }
+
+AIC_BALANCE_RAW=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$DEPLOYER" --rpc-url "$SEPOLIA_RPC_URL")
+AIC_BALANCE=$(strip_cast "$AIC_BALANCE_RAW")
 info "Deployer AIC balance: $AIC_BALANCE"
 
-if (( AIC_BALANCE < PRESALE_AIC_AMOUNT )); then
-  die "Insufficient AIC balance. Need 500M (${PRESALE_AIC_AMOUNT}), have ${AIC_BALANCE}"
-fi
+# Use python for big-int comparison (bash integers overflow at 64-bit)
+python3 -c "
+import sys
+bal = int('$AIC_BALANCE')
+need = $PRESALE_AIC_AMOUNT
+if bal < need:
+    print(f'Insufficient AIC: have {bal}, need {need}', file=sys.stderr)
+    sys.exit(1)
+"
 
 send "Transfer 500M AIC to ClaimModule" \
   "$AIC_TOKEN" "transfer(address,uint256)" "$CLAIM_MODULE" "$PRESALE_AIC_AMOUNT"
 
-CLAIM_AIC=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$CLAIM_MODULE" --rpc-url "$SEPOLIA_RPC_URL")
-[[ "$CLAIM_AIC" == "$PRESALE_AIC_AMOUNT" ]] || die "ClaimModule AIC balance mismatch: $CLAIM_AIC"
+CLAIM_AIC_RAW=$(cast call "$AIC_TOKEN" "balanceOf(address)(uint256)" "$CLAIM_MODULE" --rpc-url "$SEPOLIA_RPC_URL")
+CLAIM_AIC=$(strip_cast "$CLAIM_AIC_RAW")
+
+python3 -c "
+import sys
+got = int('$CLAIM_AIC')
+want = $PRESALE_AIC_AMOUNT
+if got != want:
+    print(f'ClaimModule AIC balance mismatch: got {got}, want {want}', file=sys.stderr)
+    sys.exit(1)
+"
 info "ClaimModule funded: $CLAIM_AIC AIC ✓"
 
 # ─── 11) Post-deploy verification ────────────────────────────────────────────
