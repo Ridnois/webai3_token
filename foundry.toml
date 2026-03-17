@@ -11,7 +11,7 @@ ffi = false
 fs_permissions = []
 gas_reports = ["WebAI3Token"]
 fuzz = { runs = 1000 }
-invariant = { runs = 256, depth = 64, fail_on_revert = false }
+invariant = { runs = 1000, depth = 128, fail_on_revert = false }
 
 [fmt]
 line_length = 100

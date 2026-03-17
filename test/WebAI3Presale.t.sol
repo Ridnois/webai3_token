@@ -118,17 +118,22 @@ contract WebAI3PresaleSystemTest is PresaleSystemTestBase {
     }
 
     function test_DevRunwayDualGateLimitsWithdrawals() public {
-        _buy(alice, 500_000e6); // dev deposit = 75k, milestone unlock = 50k
+        _buy(alice, 500_000e6); // dev deposit = 75,000 USDC (15% of 500k)
 
         assertEq(devRunwayVault.withdrawableDev(), 0);
 
         vm.warp(block.timestamp + 10 days);
-        assertEq(devRunwayVault.withdrawableDev(), 50_000e6);
+
+        // Linear stream: DEV_MAX_BUDGET * elapsed / DEV_STREAM_DURATION
+        //   = 1,050,000e6 * 10 days / 180 days = 58,333,333,333 USDC6
+        // Deposited (75,000e6) > streamed (58,333,333,333), so stream is the binding constraint.
+        uint256 expectedWithdrawable = 58_333_333_333;
+        assertEq(devRunwayVault.withdrawableDev(), expectedWithdrawable);
 
         vm.prank(devOperator);
-        devRunwayVault.withdraw(50_000e6);
+        devRunwayVault.withdraw(expectedWithdrawable);
 
-        assertEq(usdc.balanceOf(devBeneficiary), 50_000e6);
+        assertEq(usdc.balanceOf(devBeneficiary), expectedWithdrawable);
         assertEq(devRunwayVault.withdrawableDev(), 0);
     }
 
